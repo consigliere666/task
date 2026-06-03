@@ -1,0 +1,51 @@
+import asyncio
+from enum import Enum
+
+class CombatState(Enum):
+    PROVISIONING = "provisioning"
+    COMBAT_ACTIVE = "combat_active"
+    EVALUATING = "evaluating"
+    CERTIFIED = "certified"
+    FAILED = "failed"
+
+class L9CombatEngine:
+    def __init__(self, candidate_id: str, job_schema: dict):
+        self.state = CombatState.PROVISIONING
+        self.candidate_id = candidate_id
+        self.schema = job_schema
+        self.circuit_breaker_threshold = 3
+    
+    async def run_pipeline(self):
+        try:
+            # Phase 1: Ingestion & Blueprint Dispatch
+            dna = await self.call_agent_with_fallback("ingestion", self.schema, timeout=10)
+            blueprint = await self.call_agent_with_fallback("battlefield", dna, timeout=15)
+            self.state = CombatState.COMBAT_ACTIVE
+            
+            # Phase 2: Active Combat & X-RAG
+            battle_logs = []
+            async for diff_event in self.monitor_ide_websocket():
+                if self.should_trigger_xrag(diff_event):
+                    probe = await self.call_agent_with_fallback("x_rag", diff_event, timeout=5)
+                    self.dispatch_to_frontend(probe)
+                    battle_logs.append(probe)
+            
+            self.state = CombatState.EVALUATING
+            
+            # Phase 3: Oracle Judge
+            judge_result = await self.call_agent_with_fallback("oracle_judge", battle_logs, timeout=20)
+            await self.commit_to_ledger(judge_result)
+            
+            self.state = CombatState.CERTIFIED
+            return self.generate_final_report(judge_result)
+
+        except Exception as e:
+            self.state = CombatState.FAILED
+            self.trigger_graceful_degradation(e)
+            
+    async def call_agent_with_fallback(self, agent_name, payload, timeout):
+        # 熔断机制：超时或连续错误立刻降级到预设静态残卷
+        try:
+            return await asyncio.wait_for(rpc_call(agent_name, payload), timeout)
+        except asyncio.TimeoutError:
+            return self.load_static_fallback(agent_name)
