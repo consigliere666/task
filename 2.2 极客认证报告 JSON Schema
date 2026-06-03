@@ -1,0 +1,26 @@
+{
+  "$schema": "[http://json-schema.org/draft-07/schema#](http://json-schema.org/draft-07/schema#)",
+  "type": "object",
+  "properties": {
+    "candidate_id": { "type": "string", "format": "uuid" },
+    "combat_hash": { "type": "string", "description": "SHA-256 防伪确权标识，基于战役日志生成" },
+    "radar_data": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "dimension": { "type": "string" },
+          "score": { "type": "number", "minimum": 0, "maximum": 1.0 },
+          "verified": { "type": "boolean" }
+        },
+        "required": ["dimension", "score", "verified"]
+      }
+    },
+    "verified_atoms": {
+      "type": "array",
+      "items": { "type": "string", "format": "uuid" }
+    },
+    "reranker_payload": { "type": "string" }
+  },
+  "required": ["candidate_id", "combat_hash", "radar_data", "verified_atoms"]
+}
